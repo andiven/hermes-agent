@@ -117,6 +117,45 @@ def _is_claude_model(model: str | None) -> bool:
     return "claude" in (model or "").lower()
 
 
+def _zai_system_replacements() -> List[Tuple[str, str]]:
+    """Return system-prompt replacements for Z.AI's opaque routing filters."""
+    replacements: List[Tuple[str, str]] = [("Hermes Agent", "Hermes  Agent")]
+    raw = os.getenv("HERMES_ZAI_SYSTEM_REPLACEMENTS", "").strip()
+    if not raw:
+        return replacements
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        logger.debug("Ignoring invalid HERMES_ZAI_SYSTEM_REPLACEMENTS JSON")
+        return replacements
+    if isinstance(parsed, dict):
+        replacements.extend((str(k), str(v)) for k, v in parsed.items())
+    elif isinstance(parsed, list):
+        for item in parsed:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                replacements.append((str(item[0]), str(item[1])))
+    return [(old, new) for old, new in replacements if old]
+
+
+def _sanitize_zai_system_prompt(value: Any) -> Any:
+    """Avoid Z.AI's system-prompt 1305 triggers without editing skill text."""
+    if isinstance(value, str):
+        text = value
+        for old, new in _zai_system_replacements():
+            text = text.replace(old, new)
+        return text
+    if isinstance(value, list):
+        return [_sanitize_zai_system_prompt(item) for item in value]
+    if isinstance(value, dict):
+        out = dict(value)
+        if isinstance(out.get("text"), str):
+            out["text"] = _sanitize_zai_system_prompt(out["text"])
+        if isinstance(out.get("content"), str):
+            out["content"] = _sanitize_zai_system_prompt(out["content"])
+        return out
+    return value
+
+
 _FAST_MODE_SUPPORTED_SUBSTRINGS = ("opus-4-6", "opus-4.6")
 
 # ── Max output token limits per Anthropic model ───────────────────────
@@ -2437,6 +2476,9 @@ def build_anthropic_kwargs(
                             block["name"] = _to_oauth_wire_name(block["name"])
                         elif block.get("type") == "tool_result" and "tool_use_id" in block:
                             pass  # tool_result uses ID, not name
+
+    if system and base_url_host_matches(str(base_url or ""), "api.z.ai"):
+        system = _sanitize_zai_system_prompt(system)
 
     kwargs: Dict[str, Any] = {
         "model": model,
