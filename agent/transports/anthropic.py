@@ -84,10 +84,16 @@ class AnthropicTransport(ProviderTransport):
         to OpenAI finish_reason, and collects reasoning_details in provider_data.
         """
         import json
-        from agent.anthropic_adapter import _to_plain_data, _sanitize_replay_block
+        from agent.anthropic_adapter import (
+            _sanitize_replay_block,
+            _to_plain_data,
+            restore_zai_output_text,
+        )
         from agent.transports.types import ToolCall
+        from utils import base_url_host_matches
 
         strip_tool_prefix = kwargs.get("strip_tool_prefix", False)
+        restore_zai_output = base_url_host_matches(str(kwargs.get("base_url", "")), "api.z.ai")
         _MCP_PREFIX = "mcp__"
 
         text_parts = []
@@ -118,7 +124,10 @@ class AnthropicTransport(ProviderTransport):
                 if clean_block is not None:
                     ordered_blocks.append(clean_block)
             if block.type == "text":
-                text_parts.append(block.text)
+                text = block.text
+                if restore_zai_output:
+                    text = restore_zai_output_text(text)
+                text_parts.append(text)
             elif block.type in ("thinking", "redacted_thinking"):
                 if block.type == "thinking":
                     reasoning_parts.append(block.thinking)

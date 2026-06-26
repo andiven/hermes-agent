@@ -156,6 +156,16 @@ def _sanitize_zai_system_prompt(value: Any) -> Any:
     return value
 
 
+def restore_zai_output_text(text: str) -> str:
+    """Reverse Z.AI prompt-sanitize replacements in assistant-visible text."""
+    if not isinstance(text, str):
+        return text
+    restored = text
+    for old, new in _zai_system_replacements():
+        restored = restored.replace(new, old)
+    return restored
+
+
 _FAST_MODE_SUPPORTED_SUBSTRINGS = ("opus-4-6", "opus-4.6")
 
 # ── Max output token limits per Anthropic model ───────────────────────

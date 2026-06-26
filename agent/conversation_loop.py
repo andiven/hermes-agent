@@ -3620,6 +3620,7 @@ def run_conversation(
             _normalize_kwargs = {}
             if agent.api_mode == "anthropic_messages":
                 _normalize_kwargs["strip_tool_prefix"] = agent._is_anthropic_oauth
+                _normalize_kwargs["base_url"] = getattr(agent, "_anthropic_base_url", None) or getattr(agent, "base_url", "")
             normalized = _transport.normalize_response(response, **_normalize_kwargs)
             assistant_message = normalized
             finish_reason = normalized.finish_reason
