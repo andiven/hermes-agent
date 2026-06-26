@@ -119,7 +119,7 @@ def _is_claude_model(model: str | None) -> bool:
 
 def _zai_system_replacements() -> List[Tuple[str, str]]:
     """Return system-prompt replacements for Z.AI's opaque routing filters."""
-    replacements: List[Tuple[str, str]] = [("Hermes Agent", "Hermes  Agent")]
+    replacements: List[Tuple[str, str]] = [("Hermes Agent", "Semreh  Agent")]
     raw = os.getenv("HERMES_ZAI_SYSTEM_REPLACEMENTS", "").strip()
     if not raw:
         return replacements
